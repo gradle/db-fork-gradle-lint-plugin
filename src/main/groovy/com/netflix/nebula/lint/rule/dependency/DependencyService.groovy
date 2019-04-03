@@ -171,7 +171,7 @@ class DependencyService {
      * @return
      */
     @Memoized
-    Collection<ClassInformation> methodReferences(String confName) {
+    Collection<MethodReference> methodReferences(String confName) {
         return findMethodReferences(confName, Collections.EMPTY_LIST,  Collections.EMPTY_LIST)
     }
 
@@ -184,7 +184,7 @@ class DependencyService {
      * @return
      */
     @Memoized
-    Collection<ClassInformation> methodReferencesExcluding(String confName,  Collection<String> ignoredPackages = []) {
+    Collection<MethodReference> methodReferencesExcluding(String confName,  Collection<String> ignoredPackages = []) {
         return findMethodReferences(confName, Collections.EMPTY_LIST,  ignoredPackages + DEFAULT_METHOD_REFERENCE_IGNORED_PACKAGES)
     }
 
@@ -196,26 +196,25 @@ class DependencyService {
      * @return
      */
     @Memoized
-    Collection<ClassInformation> methodReferencesIncludeOnly(String confName, Collection<String> includeOnlyPackages) {
+    Collection<MethodReference> methodReferencesIncludeOnly(String confName, Collection<String> includeOnlyPackages) {
         return findMethodReferences(confName, includeOnlyPackages,  Collections.EMPTY_LIST)
     }
 
-    private Collection<ClassInformation> findMethodReferences(String confName, Collection<String> includeOnlyPackages, Collection<String> ignoredPackages ) {
-        Map<String, Collection<ResolvedArtifact>> artifactsByClass = artifactsByClass(confName)
-        Collection<ClassInformation> classesInfo = []
+    private Collection<MethodReference> findMethodReferences(String confName, Collection<String> includeOnlyPackages, Collection<String> ignoredPackages ) {
+        Collection<MethodReference> allReferences = []
         sourceSetOutput(confName).files.findAll { it.exists() }.each { output ->
             Files.walkFileTree(output.toPath(), new SimpleFileVisitor<Path>() {
                 @Override
                 FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                     if (file.toFile().name.endsWith('.class')) {
-                        ClassInformation classInformation = new MethodScanner().findMethodReferences(artifactsByClass, file, includeOnlyPackages, ignoredPackages)
-                        classesInfo.add(classInformation)
+                        Collection<MethodReference> references = new MethodScanner().findCallingMethods(file, includeOnlyPackages, ignoredPackages)
+                        allReferences.addAll(references)
                     }
                     return FileVisitResult.CONTINUE
                 }
             })
         }
-        return classesInfo
+        return allReferences
     }
 
     @Memoized
@@ -252,6 +251,7 @@ class DependencyService {
                 }
             })
         }
+
         return references
     }
 

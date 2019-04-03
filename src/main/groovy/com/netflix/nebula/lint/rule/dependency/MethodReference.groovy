@@ -1,28 +1,27 @@
 package com.netflix.nebula.lint.rule.dependency
 
-
 class MethodReference {
+    String className
     String methodName
     String owner
     String methodDesc
     int line
     boolean isInterface
     OpCode opCode
-    Collection<ResolvedArtifactInfo> artifacts
 
-    MethodReference(String methodName, String owner, String methodDesc, int line, boolean isInterface, int code, Collection<ResolvedArtifactInfo> artifacts) {
+    MethodReference(String className, String methodName, String owner, String methodDesc, int line, boolean isInterface, int code) {
+        this.className = className
         this.methodName = methodName
         this.owner = owner
         this.methodDesc = methodDesc
         this.line = line
         this.isInterface = isInterface
         this.opCode = OpCode.findByCode(code)
-        this.artifacts = artifacts
     }
 
     @Override
     String toString() {
-        return "methodName: $methodName - owner: $owner - methodDesc: $methodDesc - line: $line - isInterface: $isInterface - opCode: ${opCode.name()}"
+        return "className: $className | methodName: $methodName | owner: $owner | methodDesc: $methodDesc | line: $line | isInterface: $isInterface | opCode: ${opCode.name()}"
     }
 
     enum OpCode {

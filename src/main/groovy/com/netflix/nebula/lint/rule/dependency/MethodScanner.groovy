@@ -1,6 +1,5 @@
 package com.netflix.nebula.lint.rule.dependency
 
-import org.gradle.api.artifacts.ResolvedArtifact
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.Label
@@ -24,13 +23,11 @@ class MethodScanner {
 
         private final Collection<String> ignoredPackages
         private final Collection<String> includeOnlyPackages
-        private final Map<String, Collection<ResolvedArtifact>> artifactsByClass
 
-        AppMethodVisitor(Map<String, Collection<ResolvedArtifact>> artifactsByClass, Collection<String> includeOnlyPackages, Collection<String> ignoredPackages) {
+        AppMethodVisitor(Collection<String> includeOnlyPackages, Collection<String> ignoredPackages) {
             super(Opcodes.ASM6)
             this.ignoredPackages = ignoredPackages
             this.includeOnlyPackages = includeOnlyPackages
-            this.artifactsByClass = artifactsByClass
         }
 
         @Override
@@ -41,17 +38,14 @@ class MethodScanner {
             if (ignoredPackages.any { ignoredPackage -> owner.startsWith(ignoredPackage) }) {
                 return
             }
-
-            Collection<ResolvedArtifact> artifacts = artifactsByClass.get(owner)
-
             methodReferences.add(new MethodReference(
+                    classVisitor.className,
                     name,
                     owner,
                     desc,
                     line,
                     isInterface,
-                    opcode,
-                    artifacts.collect { ResolvedArtifactInfo.fromResolvedArtifact(it)}
+                    opcode
             )
             )
         }
@@ -70,9 +64,9 @@ class MethodScanner {
         public String methodName
         public String methodDesc
 
-        AppClassVisitor(Map<String, Collection<ResolvedArtifact>> artifactsByClass, Collection<String> includeOnlyPackages, Collection<String> ignoredPackages) {
+        AppClassVisitor(Collection<String> includeOnlyPackages, Collection<String> ignoredPackages) {
             super(Opcodes.ASM6)
-            this.methodVisitor = new AppMethodVisitor(artifactsByClass, includeOnlyPackages, ignoredPackages)
+            methodVisitor = new AppMethodVisitor(includeOnlyPackages, ignoredPackages)
         }
 
         @Override
@@ -97,14 +91,14 @@ class MethodScanner {
     }
 
 
-    ClassInformation findMethodReferences(Map<String, Collection<ResolvedArtifact>> artifactsByClass, Path toScan, Collection<String> includeOnlyPackages, Collection<String> ignoredPackages) throws Exception {
+    Collection<MethodReference> findCallingMethods(Path toScan, Collection<String> includeOnlyPackages, Collection<String> ignoredPackages) throws Exception {
         BufferedInputStream stream = toScan.newInputStream()
         stream.mark(Integer.MAX_VALUE)
-        this.classVisitor = new AppClassVisitor(artifactsByClass, includeOnlyPackages, ignoredPackages)
+        this.classVisitor = new AppClassVisitor(includeOnlyPackages, ignoredPackages)
         ClassReader reader = new ClassReader(stream)
         reader.accept(classVisitor, 0)
         stream.reset()
         stream.close()
-        return new ClassInformation(classVisitor.source, classVisitor.className, methodReferences)
+        return methodReferences
     }
 }
